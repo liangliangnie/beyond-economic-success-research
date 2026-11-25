@@ -113,18 +113,19 @@ st.markdown(
     h2 { font-size:clamp(1.8rem,3.2vw,2.6rem)!important; line-height:1.12!important; }
     h3 { font-size:1.25rem!important; }
     p,li,label { color:var(--ink); }
+    .st-key-project_header { position:relative; overflow:hidden; background:linear-gradient(110deg,#fff 0%,#fff 62%,#FFF5EB 100%);
+      border:1px solid #F0E6DC; border-radius:32px; padding:clamp(1.5rem,4vw,3.2rem);
+      margin-bottom:1.7rem; box-shadow:0 2px 0 rgba(66,38,20,.03); }
+    .st-key-project_header:before { content:''; pointer-events:none; position:absolute; width:420px;height:420px;right:-90px;top:-125px;
+      border-radius:50%; background:radial-gradient(circle,rgba(247,179,111,.22),rgba(247,179,111,0) 70%); }
     .topline { display:flex; justify-content:space-between; align-items:center; gap:1rem;
-      margin-bottom:1.1rem; }
+      margin-bottom:1.25rem; position:relative; z-index:2; }
     .brand { font-size:.82rem; font-weight:800; letter-spacing:.04em; }
     .brand span,.accent { color:var(--orange); }
     .nav-caption { color:#8A7A70; font-size:.72rem; font-weight:700; letter-spacing:.08em; }
-    .hero { position:relative; overflow:hidden; background:linear-gradient(110deg,#fff 0%,#fff 62%,#FFF5EB 100%);
-      border:1px solid #F0E6DC; border-radius:32px; padding:clamp(2rem,5vw,4.3rem);
-      min-height:390px; box-shadow:0 2px 0 rgba(66,38,20,.03); }
-    .hero:before { content:''; position:absolute; width:420px;height:420px;right:-90px;top:-125px;
-      border-radius:50%; background:radial-gradient(circle,rgba(247,179,111,.26),rgba(247,179,111,0) 70%); }
-    .hero:after { content:''; position:absolute; width:480px;height:300px;right:50px;bottom:-230px;
-      border-radius:50%; background:radial-gradient(circle,rgba(217,91,24,.12),rgba(217,91,24,0) 70%); }
+    .hero { position:relative; overflow:visible; background:transparent; border:0; border-radius:0;
+      padding:0; min-height:unset; box-shadow:none; }
+    .hero:before,.hero:after { display:none; }
     .hero-copy { position:relative; z-index:2; max-width:720px; }
     .eyebrow { display:inline-flex; align-items:center; gap:.5rem; border-radius:999px;
       padding:.5rem .85rem; background:#F7EFE5; color:var(--orange); font-size:.7rem;
@@ -184,16 +185,13 @@ st.markdown(
     div[role="radiogroup"] label:has(input:checked) { background:var(--orange); border-color:var(--orange); color:#fff; }
     div[role="radiogroup"] label:has(input:checked) * { color:#fff!important; }
     hr { border-color:var(--line); }
-    @media(max-width:800px) { .hero { min-height:unset; padding:2rem 1.35rem; border-radius:24px; }
+    .st-key-project_header div[data-testid="stRadio"] { position:relative; z-index:2; margin-top:1.25rem; }
+    .st-key-project_header div[role="radiogroup"] { flex-wrap:wrap; }
+    @media(max-width:800px) { .st-key-project_header { padding:1.5rem 1.2rem; border-radius:24px; }
+      .topline { align-items:flex-start; flex-direction:column; gap:.35rem; }
       .hero-deck {font-size:.96rem;} .block-container {padding-top:.65rem;} }
     </style>
     """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    "<div class='topline'><div class='brand'>BEYOND <span>ECONOMIC SUCCESS</span></div>"
-    "<div class='nav-caption'>WVS WAVE 7 · RESEARCH APP</div></div>",
     unsafe_allow_html=True,
 )
 
@@ -201,45 +199,28 @@ PAGES = ["Home", "Prediction", "Model Insights", "Workflow"]
 if "main_nav" not in st.session_state:
     st.session_state.main_nav = "Home"
 
-# On the Home page, place navigation directly below the hero. On other pages,
-# keep navigation directly below the brand bar for easy page switching.
-current_page = st.session_state.main_nav
-
-
-def section_head(label, title=None, subtitle=None):
-    title_html = f"<h2>{title}</h2>" if title else ""
-    subtitle_html = f"<p style='color:#786B63;line-height:1.7;margin-top:.5rem'>{subtitle}</p>" if subtitle else ""
+# Keep the project introduction and navigation inside one shared header on
+# every page. This gives Home and the three inner pages the same navigation
+# placement and prevents the nav from jumping to the top on page changes.
+with st.container(key="project_header"):
     st.markdown(
-        f"<div class='section-head'><div class='section-label'>{label}</div>{title_html}{subtitle_html}</div>",
+        "<div class='topline'><div class='brand'>BEYOND <span>ECONOMIC SUCCESS</span></div>"
+        "<div class='nav-caption'>WVS WAVE 7 · RESEARCH APP</div></div>"
+        "<div class='hero'><div class='hero-copy'>"
+        "<div class='eyebrow'>WVS Wave 7 · Predictive research</div>"
+        "<h1>What makes a life<br><span class='accent'>feel good?</span></h1>"
+        "<p class='hero-deck'>I began this research expecting economic wellbeing to be a key predictor of life satisfaction. The findings challenged that assumption.</p>"
+        "<p class='hero-deck'>Using World Values Survey Wave 7 data, I developed a machine learning model to explore how economic, social, and personal factors predict life satisfaction—and what lies beyond economic success.</p>"
+        "</div></div>",
         unsafe_allow_html=True,
     )
-
-
-def reflection_card(num, title, question):
-    st.markdown(
-        f"<div class='reflection-card'><div class='reflection-num'>{num}</div>"
-        f"<div class='reflection-title'>{title}</div>"
-        f"<div class='reflection-question'>{question}</div></div>",
-        unsafe_allow_html=True,
+    page = st.radio(
+        "Navigate",
+        PAGES,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="main_nav",
     )
-
-
-# Render the Home hero before navigation so the page tabs sit immediately
-# beneath the project title and introduction, as part of the visual header.
-if current_page == "Home":
-    st.markdown(
-        """
-        <div class="hero"><div class="hero-copy">
-          <div class="eyebrow">WVS Wave 7 · Predictive research</div>
-          <h1>What makes a life<br><span class="accent">feel good?</span></h1>
-          <p class="hero-deck">I began this research expecting economic wellbeing to be a key predictor of life satisfaction. The findings challenged that assumption.</p>
-          <p class="hero-deck">Using World Values Survey Wave 7 data, I developed a machine learning model to explore how economic, social, and personal factors predict life satisfaction—and what lies beyond economic success.</p>
-        </div></div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-page = st.radio("Navigate", PAGES, horizontal=True, label_visibility="collapsed", key="main_nav")
 
 if page == "Home":
     section_head("The study at a glance", "A global survey, one central question",
