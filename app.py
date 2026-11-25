@@ -130,7 +130,8 @@ st.markdown(
       padding:.5rem .85rem; background:#F7EFE5; color:var(--orange); font-size:.7rem;
       font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:1.2rem; }
     .eyebrow:before { content:''; width:7px;height:7px;border-radius:50%;background:var(--orange); }
-    .hero-deck { max-width:610px; color:var(--muted); font-size:1.02rem; line-height:1.8; margin-top:1.2rem; }
+    .hero-deck { max-width:680px; color:var(--muted); font-size:1.02rem; line-height:1.75; margin-top:1.05rem; margin-bottom:.65rem; }
+    .hero-deck + .hero-deck { margin-top:.7rem; }
     .section-head { margin:2.4rem 0 1rem; }
     .section-label { color:var(--orange); text-transform:uppercase; letter-spacing:.12em;
       font-weight:800; font-size:.7rem; margin-bottom:.45rem; }
@@ -199,7 +200,10 @@ st.markdown(
 PAGES = ["Home", "Prediction", "Model Insights", "Workflow"]
 if "main_nav" not in st.session_state:
     st.session_state.main_nav = "Home"
-page = st.radio("Navigate", PAGES, horizontal=True, label_visibility="collapsed", key="main_nav")
+
+# On the Home page, place navigation directly below the hero. On other pages,
+# keep navigation directly below the brand bar for easy page switching.
+current_page = st.session_state.main_nav
 
 
 def section_head(label, title=None, subtitle=None):
@@ -220,18 +224,24 @@ def reflection_card(num, title, question):
     )
 
 
-if page == "Home":
+# Render the Home hero before navigation so the page tabs sit immediately
+# beneath the project title and introduction, as part of the visual header.
+if current_page == "Home":
     st.markdown(
         """
         <div class="hero"><div class="hero-copy">
           <div class="eyebrow">WVS Wave 7 · Predictive research</div>
           <h1>What makes a life<br><span class="accent">feel good?</span></h1>
-          <div class="hero-deck">I began this research expecting economic wellbeing to be one of the strongest predictors of life satisfaction. The results challenged that expectation. Explore what the data revealed—and what it suggests about life beyond economic success.</div>
+          <p class="hero-deck">I began this research expecting economic wellbeing to be a key predictor of life satisfaction. The findings challenged that assumption.</p>
+          <p class="hero-deck">Using World Values Survey Wave 7 data, I developed a machine learning model to explore how economic, social, and personal factors predict life satisfaction—and what lies beyond economic success.</p>
         </div></div>
         """,
         unsafe_allow_html=True,
     )
 
+page = st.radio("Navigate", PAGES, horizontal=True, label_visibility="collapsed", key="main_nav")
+
+if page == "Home":
     section_head("The study at a glance", "A global survey, one central question",
                 "The analysis uses World Values Survey Wave 7 and examines self-reported life satisfaction across countries and regions.")
     overview = [
