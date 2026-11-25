@@ -7,6 +7,7 @@ import streamlit as st
 APP_DIR = Path(__file__).parent
 ASSET_DIR = APP_DIR / "assets"
 
+# v13 hotfix: restore shared section_head and reflection_card helpers
 st.set_page_config(
     page_title="Beyond Economic Success",
     page_icon="☀️",
@@ -113,11 +114,20 @@ st.markdown(
     h2 { font-size:clamp(1.8rem,3.2vw,2.6rem)!important; line-height:1.12!important; }
     h3 { font-size:1.25rem!important; }
     p,li,label { color:var(--ink); }
-    .st-key-project_header { position:relative; overflow:hidden; background:linear-gradient(110deg,#fff 0%,#fff 62%,#FFF5EB 100%);
+    .st-key-home_header { position:relative; overflow:hidden; background:linear-gradient(110deg,#fff 0%,#fff 62%,#FFF5EB 100%);
       border:1px solid #F0E6DC; border-radius:32px; padding:clamp(1.5rem,4vw,3.2rem);
       margin-bottom:1.7rem; box-shadow:0 2px 0 rgba(66,38,20,.03); }
-    .st-key-project_header:before { content:''; pointer-events:none; position:absolute; width:420px;height:420px;right:-90px;top:-125px;
+    .st-key-home_header:before { content:''; pointer-events:none; position:absolute; width:420px;height:420px;right:-90px;top:-125px;
       border-radius:50%; background:radial-gradient(circle,rgba(247,179,111,.22),rgba(247,179,111,0) 70%); }
+    .st-key-prediction_header, .st-key-insights_header, .st-key-workflow_header { margin-bottom:1.4rem; }
+    .st-key-home_header div[data-testid="stRadio"],
+    .st-key-prediction_header div[data-testid="stRadio"],
+    .st-key-insights_header div[data-testid="stRadio"],
+    .st-key-workflow_header div[data-testid="stRadio"] { position:relative; z-index:2; margin-top:1.15rem; }
+    .st-key-home_header div[role="radiogroup"],
+    .st-key-prediction_header div[role="radiogroup"],
+    .st-key-insights_header div[role="radiogroup"],
+    .st-key-workflow_header div[role="radiogroup"] { flex-wrap:wrap; }
     .topline { display:flex; justify-content:space-between; align-items:center; gap:1rem;
       margin-bottom:1.25rem; position:relative; z-index:2; }
     .brand { font-size:.82rem; font-weight:800; letter-spacing:.04em; }
@@ -185,9 +195,7 @@ st.markdown(
     div[role="radiogroup"] label:has(input:checked) { background:var(--orange); border-color:var(--orange); color:#fff; }
     div[role="radiogroup"] label:has(input:checked) * { color:#fff!important; }
     hr { border-color:var(--line); }
-    .st-key-project_header div[data-testid="stRadio"] { position:relative; z-index:2; margin-top:1.25rem; }
-    .st-key-project_header div[role="radiogroup"] { flex-wrap:wrap; }
-    @media(max-width:800px) { .st-key-project_header { padding:1.5rem 1.2rem; border-radius:24px; }
+    @media(max-width:800px) { .st-key-home_header { padding:1.5rem 1.2rem; border-radius:24px; }
       .topline { align-items:flex-start; flex-direction:column; gap:.35rem; }
       .hero-deck {font-size:.96rem;} .block-container {padding-top:.65rem;} }
     </style>
@@ -195,32 +203,105 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+
+def section_head(label, title=None, subtitle=None):
+    title_html = f"<h2>{title}</h2>" if title else ""
+    subtitle_html = (
+        f"<p style='color:#786B63;line-height:1.7;margin-top:.5rem'>{subtitle}</p>"
+        if subtitle else ""
+    )
+    st.markdown(
+        f"<div class='section-head'><div class='section-label'>{label}</div>"
+        f"{title_html}{subtitle_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def reflection_card(num, title, question):
+    st.markdown(
+        f"<div class='reflection-card'><div class='reflection-num'>{num}</div>"
+        f"<div class='reflection-title'>{title}</div>"
+        f"<div class='reflection-question'>{question}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 PAGES = ["Home", "Prediction", "Model Insights", "Workflow"]
 if "main_nav" not in st.session_state:
     st.session_state.main_nav = "Home"
 
-# Keep the project introduction and navigation inside one shared header on
-# every page. This gives Home and the three inner pages the same navigation
-# placement and prevents the nav from jumping to the top on page changes.
-with st.container(key="project_header"):
+
+def brand_line():
     st.markdown(
-        "<div class='topline'><div class='brand'>BEYOND <span>ECONOMIC SUCCESS</span></div>"
-        "<div class='nav-caption'>WVS WAVE 7 · RESEARCH APP</div></div>"
-        "<div class='hero'><div class='hero-copy'>"
-        "<div class='eyebrow'>WVS Wave 7 · Predictive research</div>"
-        "<h1>What makes a life<br><span class='accent'>feel good?</span></h1>"
-        "<p class='hero-deck'>I began this research expecting economic wellbeing to be a key predictor of life satisfaction. The findings challenged that assumption.</p>"
-        "<p class='hero-deck'>Using World Values Survey Wave 7 data, I developed a machine learning model to explore how economic, social, and personal factors predict life satisfaction—and what lies beyond economic success.</p>"
-        "</div></div>",
+        "<div class='topline'><div class='brand'>BEYOND <span>ECONOMIC SUCCESS</span></div></div>",
         unsafe_allow_html=True,
     )
-    page = st.radio(
+
+
+def page_navigation():
+    st.radio(
         "Navigate",
         PAGES,
         horizontal=True,
         label_visibility="collapsed",
         key="main_nav",
     )
+
+
+# The navigation is rendered inside each page's own header. The inner pages
+# retain their distinct title, eyebrow and introduction instead of inheriting
+# the Home hero.
+page = st.session_state.main_nav
+
+if page == "Home":
+    with st.container(key="home_header"):
+        brand_line()
+        st.markdown(
+            """
+            <div class="hero"><div class="hero-copy">
+              <div class="eyebrow">WVS Wave 7 · Predictive research</div>
+              <h1>What makes a life<br><span class="accent">feel good?</span></h1>
+              <p class="hero-deck">I began this research expecting economic wellbeing to be a key predictor of life satisfaction. The findings challenged that assumption.</p>
+              <p class="hero-deck">Using World Values Survey Wave 7 data, I developed a machine learning model to explore how economic, social, and personal factors predict life satisfaction—and what lies beyond economic success.</p>
+            </div></div>
+            """,
+            unsafe_allow_html=True,
+        )
+        page_navigation()
+
+elif page == "Prediction":
+    with st.container(key="prediction_header"):
+        brand_line()
+        st.markdown(
+            "<div class='eyebrow'>Interactive exploration</div>"
+            "<h1>Your wellbeing<br><span class='accent'>profile.</span></h1>",
+            unsafe_allow_html=True,
+        )
+        st.write("Explore a predicted life-satisfaction score using a reduced set of WVS Wave 7 inputs.")
+        page_navigation()
+
+elif page == "Model Insights":
+    with st.container(key="insights_header"):
+        brand_line()
+        st.markdown(
+            "<div class='eyebrow'>Model interpretation</div>"
+            "<h1>Patterns, not<br><span class='accent'>prescriptions.</span></h1>",
+            unsafe_allow_html=True,
+        )
+        st.write("Explore how feature rankings compare across interpretation methods, and what selected patterns may invite us to consider. The full Random Forest feature-importance chart appears on the Home page. Predictive importance is not causal evidence.")
+        page_navigation()
+
+elif page == "Workflow":
+    with st.container(key="workflow_header"):
+        brand_line()
+        st.markdown(
+            "<div class='eyebrow'>Research process</div>"
+            "<h1>From data to<br><span class='accent'>predictive insight.</span></h1>",
+            unsafe_allow_html=True,
+        )
+        st.write("The study is organized into five layers and ten steps, from understanding the WVS questionnaire to model evaluation and reflection.")
+        page_navigation()
 
 if page == "Home":
     section_head("The study at a glance", "A global survey, one central question",
@@ -277,8 +358,6 @@ if page == "Home":
                        "Can economic success fully capture how people experience wellbeing?")
 
 elif page == "Prediction":
-    st.markdown("<div class='eyebrow'>Interactive exploration</div><h1>Your wellbeing<br><span class='accent'>profile.</span></h1>", unsafe_allow_html=True)
-    st.write("Explore a predicted life-satisfaction score using a reduced set of WVS Wave 7 inputs.")
     st.markdown(
         "<div class='warm-note'><strong>Model choice:</strong> In the Notebook 05a feature-count experiments, the Top 30 Random Forest performed slightly better than Top 20 (5-fold CV R² = 0.4533 vs. 0.4460). This interactive version uses 20 model inputs for ease of completion: 19 survey questions plus Country/region. The reduced-input model is separate from the Top 30 model. To keep the downloadable artifact lighter, the App uses a 100-tree sub-ensemble from a 200-tree reduced-input fit. The Notebook Top20 CV score used fold-wise feature selection; these scores are context, not a direct evaluation of this exact fixed App input set.</div>",
         unsafe_allow_html=True,
@@ -379,8 +458,6 @@ elif page == "Prediction":
         st.caption("The test split was used in earlier project analyses, so these results are supplementary rather than a fresh independent evaluation. The 5-fold CV comparison above is the basis for noting that Top 30 performed better than Top 20 in the Notebook 05a feature-count experiment.")
 
 elif page == "Model Insights":
-    st.markdown("<div class='eyebrow'>Model interpretation</div><h1>Patterns, not<br><span class='accent'>prescriptions.</span></h1>", unsafe_allow_html=True)
-    st.write("Explore how feature rankings compare across interpretation methods, and what selected patterns may invite us to consider. The full Random Forest feature-importance chart appears on the Home page. Predictive importance is not causal evidence.")
 
     section_head("Interpretation methods", "Do the rankings agree?",
                 "Compare impurity-based Random Forest importance, permutation importance, and mean absolute SHAP rankings.")
@@ -469,8 +546,6 @@ elif page == "Model Insights":
     )
 
 elif page == "Workflow":
-    st.markdown("<div class='eyebrow'>Research process</div><h1>From data to<br><span class='accent'>predictive insight.</span></h1>", unsafe_allow_html=True)
-    st.write("The study is organized into five layers and ten steps, from understanding the WVS questionnaire to model evaluation and reflection.")
     section_head("Research workflow", "10 steps · 5 layers")
     st.image(ASSET_DIR / "research_workflow_warm_sun.png", use_container_width=True)
     st.caption("Workflow diagram based on the original project workflow. The original structure and step icons are retained, with the blue accents shifted to a warm terracotta palette.")
