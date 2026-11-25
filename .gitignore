@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local data (do not publish respondent-level files without permission)
+data/*.csv
+data/*.zip
+data/processed/
+
+# Local exports / logs
+*.log
+.DS_Store
+Thumbs.db

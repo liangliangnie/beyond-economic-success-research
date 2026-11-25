@@ -1,0 +1,22 @@
+{
+  "model": "RandomForestRegressor",
+  "app_tree_count": 100,
+  "source_fit_tree_count": 200,
+  "model_reduction": "100-tree sub-ensemble selected from the first 100 trees of the 200-tree reduced-input fit to keep the downloadable artifact smaller",
+  "input_count": 20,
+  "survey_question_count": 19,
+  "country_included": true,
+  "target": "Q49",
+  "imputation": "Hierarchical, country + income-step + global fallback; Q288 country median then global fallback",
+  "country_encoding": "OneHotEncoder(handle_unknown=ignore)",
+  "metrics_test_split": {
+    "R2": 0.45015384657798174,
+    "MAE": 1.185596078938297,
+    "RMSE": 1.6542918214839866
+  },
+  "notebook_cv_reference": {
+    "top30_r2_mean": 0.4533,
+    "top20_r2_mean": 0.446,
+    "note": "Notebook 05a feature-count experiments; Top20 CV uses fold-wise selected features, not the fixed App feature set."
+  }
+}
