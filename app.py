@@ -308,9 +308,9 @@ if page == "Home":
                 "The analysis uses World Values Survey Wave 7 and examines self-reported life satisfaction across countries and regions.")
     overview = [
         ("WVS Wave 7", "Data source", "World Values Survey"),
-        ("96,700", "Valid target responses", "Non-missing responses to Q49 · Life Satisfaction"),
+        ("~97,220", "Respondent records", "Original respondent records in the dataset"),
+        ("613", "Original variables", "Variables in the original dataset"),
         ("66", "Countries & regions", "Country/region entries represented in the dataset"),
-        ("20", "Selected model inputs", "19 survey questions + Country/region"),
     ]
     overview_cols = st.columns(4)
     for col, (value, title, desc) in zip(overview_cols, overview):
