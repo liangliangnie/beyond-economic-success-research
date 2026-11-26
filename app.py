@@ -307,6 +307,62 @@ def page_navigation():
 # the Home hero.
 page = st.session_state.main_nav
 
+
+FEATURE_IMPORTANCE = [
+    ("Q50 · Household financial satisfaction", 29.70),
+    ("Country · Country / region (aggregated)", 13.15),
+    ("Q48 · Freedom of choice and control", 11.43),
+    ("Q47 · Self-rated health", 2.69),
+    ("Q251 · Perceived democratic governance", 2.56),
+    ("Q252 · Satisfaction with political system", 2.55),
+    ("Q288 · Household income position", 2.50),
+    ("Q163 · Benefits of science and technology", 2.44),
+    ("Q106 · Income equality vs. income differences", 2.37),
+    ("Q158 · Science and technology improve daily life", 2.11),
+    ("Q159 · Science creates opportunities for next generation", 2.09),
+    ("Q249 · Women’s equal rights as a democratic feature", 1.91),
+    ("Q250 · Importance of living in a democracy", 1.80),
+    ("Q164 · Importance of God", 1.72),
+    ("Q287 · Subjective social class", 1.53),
+    ("Q131 · Security in the neighborhood", 1.45),
+    ("Q080 · Confidence in women’s organizations", 1.40),
+    ("Q253 · Respect for individual human rights", 1.37),
+    ("Q075 · Confidence in universities", 1.37),
+    ("Q088 · Confidence in the World Health Organization", 1.34),
+]
+
+def show_feature_importance_html():
+    rows = []
+    for idx, (label, value) in enumerate(FEATURE_IMPORTANCE, start=1):
+        safe_label = html.escape(label)
+        bar_class = "primary" if idx <= 3 else "secondary"
+        rows.append(
+            f"<div class='fi-row'><div class='fi-rank'>{idx:02d}</div>"
+            f"<div class='fi-label'>{safe_label}</div>"
+            f"<div class='fi-track'><div class='fi-bar {bar_class}' style='width:{value/30*100:.3f}%'></div></div>"
+            f"<div class='fi-value'>{value:.2f}%</div></div>"
+        )
+    st.markdown(
+        "<style>"
+        ".fi-card{background:#FFFCF8;border:1px solid #EADBCB;border-radius:18px;padding:18px 16px;overflow:hidden}"
+        ".fi-row{display:grid;grid-template-columns:28px minmax(185px,1.2fr) minmax(100px,1.5fr) 52px;gap:10px;align-items:center;margin:8px 0}"
+        ".fi-rank{font-size:11px;font-weight:800;color:#A18D7E}"
+        ".fi-label{font-size:12px;line-height:1.35;color:#3B2D27}"
+        ".fi-track{height:14px;background:#F1E7DD;border-radius:999px;overflow:hidden}"
+        ".fi-bar{height:100%;border-radius:999px}"
+        ".fi-bar.primary{background:#D95B12}.fi-bar.secondary{background:#A6B59E}"
+        ".fi-value{font-size:12px;font-weight:700;color:#4A3931;text-align:right;font-variant-numeric:tabular-nums}"
+        ".fi-axis{display:flex;justify-content:space-between;margin:10px 62px 0 230px;color:#8A786B;font-size:10px}"
+        ".fi-foot{font-size:12px;color:#786B63;line-height:1.55;margin-top:14px}"
+        "@media(max-width:720px){.fi-row{grid-template-columns:24px minmax(0,1fr) 48px;gap:7px}.fi-track{grid-column:2;grid-row:2}.fi-value{grid-column:3;grid-row:1/3}.fi-label{font-size:11px}.fi-axis{margin:8px 55px 0 32px}}"
+        "</style>"
+        "<div class='fi-card'>" + "".join(rows) +
+        "<div class='fi-axis'><span>0%</span><span>10%</span><span>20%</span><span>30%</span></div>"
+        "<div class='fi-foot'><strong>The Top 20 features account for 87.48% of total aggregated importance.</strong><br>Country combines country/region indicator variables. Importance reflects model reliance, not causal effects.</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
 if page == "Home":
     with st.container(key="home_header"):
         brand_line()
@@ -386,28 +442,21 @@ if page == "Home":
             )
 
     section_head("Top 20 feature ranking", "What stood out in the model",
-                "The 20 highest-ranked features from the evaluated Top30 Random Forest, shown with aggregated feature-importance percentages and concise descriptions.")
-    show_zoomable_image(ASSET_DIR / "top20_importance_with_question_text.png", "Top 20 feature importance")
-    st.caption("Importance percentages come from the Notebook 05a final Top30 model. Country aggregates country/region indicators and is not a questionnaire item.")
-    st.markdown(
-        "<div class='soft-note'>Q50 · Financial Satisfaction accounts for 29.70% of aggregated importance, followed by Country (13.15%) and Q48 · Freedom of Choice and Control (11.43%). The Top 20 features account for 87.48% of total aggregated importance. Feature importance describes model reliance, not causal effects.</div>",
-        unsafe_allow_html=True,
-    )
+                "The 20 highest-ranked features in the feature-importance analysis, shown as aggregated percentages.")
+    show_feature_importance_html()
+    st.caption("Higher bars show features the model relied on more; this is predictive importance, not evidence of cause.")
 
     section_head("A finding to explore", "Financial satisfaction in the model",
                 "A SHAP dependence plot from the Top20 feature experiment in Notebook 05a.")
     plot_col, explain_col = st.columns([1.25, 1])
     with plot_col:
         show_zoomable_image(ASSET_DIR / "shap_q50_q288_dependence.png", "SHAP dependence plot")
-        st.caption("SHAP dependence plot · Q50 colored by Q288 · Notebook 05a")
+        st.caption("Each dot is a respondent: see how financial satisfaction contributes to the model’s prediction, with color showing income position.")
     with explain_col:
         st.markdown(
             "<div class='content-card'><div class='section-label'>How to read it</div>"
-            "<h3>Each dot is a respondent in the SHAP sample.</h3>"
-            "<p style='color:#786B63;line-height:1.7'>The horizontal axis shows Q50 · Satisfaction with the financial situation of the household. The vertical axis shows Q50's SHAP value—its contribution to the model's prediction for that respondent.</p>"
-            "<p style='color:#786B63;line-height:1.7'>Color represents Q288 · Household income scale (within the country): red indicates a higher reported income step and blue a lower one. Positive SHAP values contribute toward a higher model prediction; negative values contribute toward a lower prediction.</p>"
-            "<p style='color:#786B63;line-height:1.7'>Some respondents at higher income steps (red) show negative SHAP values, while some at lower steps (blue) show positive values. This suggests that household income position and financial satisfaction do not always align in the same way with the model's predictions.</p>"
-            "<div class='warm-note'>The pattern describes the model's predictive behavior. It does not show that financial satisfaction causes life satisfaction.</div></div>",
+            "<p style='color:#786B63;line-height:1.6'>Each dot is a respondent. The x-axis is financial satisfaction; the y-axis shows how it shifts the model’s prediction. Positive SHAP values push the prediction higher, negative values lower. Color shows household income position.</p>"
+            "<div class='warm-note'>SHAP explains the model’s prediction; it does not show cause and effect.</div></div>",
             unsafe_allow_html=True,
         )
     q1, q2, q3 = st.columns(3)
@@ -526,7 +575,7 @@ elif page == "Model Insights":
     section_head("Interpretation methods", "Do the rankings agree?",
                 "Compare impurity-based Random Forest importance, permutation importance, and mean absolute SHAP rankings.")
     show_zoomable_image(ASSET_DIR / "ranking_across_methods.png", "Feature rankings across interpretation methods")
-    st.caption("Feature Ranking Across Three Interpretation Methods · rank 1 indicates the highest importance within each method.")
+    st.caption("Each method ranks features by importance; rank 1 is the highest within that method.")
     st.markdown(
         "<div class='content-card'><h3>A stable core, with some variation</h3>"
         "<p style='color:#786B63;line-height:1.7'>Q50 remains ranked first across all three methods. Q48 and Q47 also appear near the top across methods. Some other features move more substantially between methods, reminding us that feature rankings depend partly on how importance is measured.</p></div>",
@@ -545,7 +594,7 @@ elif page == "Model Insights":
     section_head("Country & social context", "Life satisfaction across 66 countries and regions",
                 "Country was an important predictor in the final model. The chart shows differences in average self-reported life satisfaction across the WVS Wave 7 country/region entries, labeled with country and region names.")
     show_zoomable_image(ASSET_DIR / "country_life_satisfaction.png", "Average life satisfaction across countries and regions")
-    st.caption("Average life satisfaction by country/region, shown with country and region names rather than three-letter codes. The dashed line marks the overall respondent-level mean (7.06).")
+    st.caption("Country/region averages; the dashed line marks the overall respondent mean (7.06).")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Country-level differences may reflect many contextual and measurement factors. This chart is descriptive and does not identify which national conditions explain the differences.</p>"
         "<p><strong>Questions to consider</strong></p><ul><li>Why do average life satisfaction levels differ across countries—and how much might these differences reflect social conditions, cultural contexts, or response patterns?</li>"
@@ -588,7 +637,7 @@ elif page == "Model Insights":
             unsafe_allow_html=True,
         )
 
-    section_head("Model performance", "Top 30 performed slightly better")
+    section_head("Model performance", "Top 30 performed slightly better", "These scores summarize how closely predictions matched reported life satisfaction in cross-validation.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>In the Notebook 05a feature-count experiments, the Top 30 Random Forest achieved slightly stronger 5-fold cross-validation performance than Top 20. The Top 30 configuration was retained as the best-performing evaluated model.</p></div>",
         unsafe_allow_html=True,
@@ -603,7 +652,7 @@ elif page == "Model Insights":
     a.metric("Mean CV R²", "0.4460")
     b.metric("Mean CV MAE", "1.1980")
     c.metric("Mean CV RMSE", "1.6679")
-    st.caption("Notebook 05a feature-count experiments. Top20 CV used fold-wise feature selection; the App uses a fixed reduced input set for usability, retrained as a separate model. These CV scores are contextual and not a direct evaluation of the exact App input set.")
+    st.caption("Cross-validation compares the Top 30 and Top 20 experiments; the app uses a separate reduced-input model.")
     st.markdown(
         "<div class='soft-note'>R² summarizes predictive performance relative to variation in the target. MAE and RMSE describe error on the 1–10 life-satisfaction scale; RMSE penalizes larger errors more strongly.</div>",
         unsafe_allow_html=True,
@@ -615,6 +664,7 @@ elif page == "Extra Insights":
     section_head("01 · Age patterns", "Does life satisfaction change with age?",
                  "Weighted mean responses across age groups for life satisfaction (Q49), financial satisfaction (Q50), and perceived freedom and control (Q48).")
     show_zoomable_image(ASSET_DIR / "age_patterns_three_outcomes.png", "Age patterns across three WVS self-reported outcomes")
+    st.caption("Weighted average responses by age group for life satisfaction, financial satisfaction, and perceived freedom.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Life satisfaction and financial satisfaction show relatively lower means around midlife and higher means among older respondents. Perceived freedom and control follows a different pattern, suggesting that dimensions of subjective wellbeing may not move together across age groups.</p><div class='warm-note'>This raises a question: is the relationship between age and life satisfaction more complex than a simple linear trend?</div></div>",
         unsafe_allow_html=True,
@@ -623,6 +673,7 @@ elif page == "Extra Insights":
     section_head("02 · Gender differences", "Does the gender gap depend on age?",
                  "The chart shows the female-minus-male difference in weighted mean Q49 within each age group.")
     show_zoomable_image(ASSET_DIR / "gender_gap_by_age.png", "Female minus male weighted mean life satisfaction by age group")
+    st.caption("Positive values mean women report a higher average; negative values mean men do.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The overall difference in life satisfaction between women and men is small. However, the direction of the difference varies across age groups. Women report slightly higher average life satisfaction in several younger and middle-age groups, while men report higher averages in the older groups.</p><div class='warm-note'>Rather than suggesting a universal gender difference, this pattern points to possible variation across different stages of life.</div></div>",
         unsafe_allow_html=True,
@@ -631,6 +682,7 @@ elif page == "Extra Insights":
     section_head("03 · Across countries", "Are gender differences consistent across countries?",
                  "Each bar represents the difference between women’s and men’s weighted mean Q49 within a country or region.")
     show_zoomable_image(ASSET_DIR / "country_gender_gap_full_names.png", "Country-level gender gap in life satisfaction; positive values indicate higher female means")
+    st.caption("Each bar shows the within-country female-minus-male difference in weighted life-satisfaction averages.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The gender gap is not uniform across countries and regions. In some places, women report higher average life satisfaction; in others, men report higher averages. A pooled global average can therefore conceal meaningful differences between country-level patterns.</p><div class='warm-note'>Positive values indicate a higher female mean; negative values indicate a higher male mean. The chart shows within-country gender gaps, not a ranking of countries by life satisfaction.</div></div>",
         unsafe_allow_html=True,
@@ -652,7 +704,7 @@ elif page == "Extra Insights":
 elif page == "Workflow":
     section_head("Research workflow", "10 steps · 5 layers")
     show_zoomable_image(ASSET_DIR / "research_workflow_warm_sun.png", "Research workflow")
-    st.caption("Workflow diagram based on the original project workflow. The original structure and step icons are retained, with the blue accents shifted to a warm terracotta palette.")
+    st.caption("The project workflow, from survey preparation to model evaluation and reflection.")
 
     section_head("Notebook sequence", "The research notebooks")
     notebooks = [
