@@ -2,7 +2,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import joblib
+import base64
+import html
 import streamlit as st
+import streamlit.components.v1 as components
 
 APP_DIR = Path(__file__).parent
 ASSET_DIR = APP_DIR / "assets"
@@ -119,14 +122,16 @@ st.markdown(
       margin-bottom:1.7rem; box-shadow:0 2px 0 rgba(66,38,20,.03); }
     .st-key-home_header:before { content:''; pointer-events:none; position:absolute; width:420px;height:420px;right:-90px;top:-125px;
       border-radius:50%; background:radial-gradient(circle,rgba(247,179,111,.22),rgba(247,179,111,0) 70%); }
-    .st-key-prediction_header, .st-key-insights_header, .st-key-workflow_header { margin-bottom:1.4rem; }
+    .st-key-prediction_header, .st-key-insights_header, .st-key-extra_insights_header, .st-key-workflow_header { margin-bottom:1.4rem; }
     .st-key-home_header div[data-testid="stRadio"],
     .st-key-prediction_header div[data-testid="stRadio"],
     .st-key-insights_header div[data-testid="stRadio"],
+    .st-key-extra_insights_header div[data-testid="stRadio"],
     .st-key-workflow_header div[data-testid="stRadio"] { position:relative; z-index:2; margin-top:1.15rem; }
     .st-key-home_header div[role="radiogroup"],
     .st-key-prediction_header div[role="radiogroup"],
     .st-key-insights_header div[role="radiogroup"],
+    .st-key-extra_insights_header div[role="radiogroup"],
     .st-key-workflow_header div[role="radiogroup"] { flex-wrap:wrap; }
     .topline { display:flex; justify-content:space-between; align-items:center; gap:1rem;
       margin-bottom:1.25rem; position:relative; z-index:2; }
@@ -227,7 +232,55 @@ def reflection_card(num, title, question):
     )
 
 
-PAGES = ["Home", "Prediction", "Model Insights", "Workflow"]
+def show_zoomable_image(image_path, caption=None, component_height=470):
+    # Responsive preview with an in-frame modal, zoom controls, pinch and pan.
+    image_path = Path(image_path)
+    mime = "image/png" if image_path.suffix.lower() == ".png" else "image/jpeg"
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    data_url = f"data:{mime};base64,{encoded}"
+    caption_html = f"<div class='zoom-caption'>{html.escape(caption)}</div>" if caption else ""
+    component_html = f'''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes"><style>
+    *{{box-sizing:border-box}} body{{margin:0;font-family:Arial,sans-serif;background:transparent;color:#786B63}}
+    .preview{{width:100%;display:block;border-radius:12px;cursor:zoom-in;max-height:420px;object-fit:contain;background:#fff}}
+    .hint{{font-size:12px;text-align:center;margin:7px 0 0;color:#8a7a70}}
+    .zoom-caption{{font-size:12px;color:#786B63;margin-top:7px;line-height:1.45}}
+    .viewer{{display:none;position:fixed;inset:0;z-index:9999;background:rgba(35,25,20,.96);padding:42px 8px 10px;overflow:hidden;touch-action:none}}
+    .viewer.open{{display:block}}
+    .toolbar{{position:absolute;top:6px;left:8px;right:8px;display:flex;justify-content:flex-end;gap:7px;z-index:2}}
+    button{{border:1px solid rgba(255,255,255,.35);background:#fff;color:#2D211D;border-radius:999px;padding:8px 12px;font-size:15px;font-weight:700;cursor:pointer}}
+    .stage{{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}}
+    .large{{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none;touch-action:none}}
+    .modalhint{{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#fff;font-size:11px;opacity:.8;pointer-events:none}}
+    </style></head><body>
+    <img class="preview" src="{data_url}" alt="Chart preview" onclick="openViewer()">
+    <div class="hint">Tap image to enlarge · pinch or use + / − to zoom</div>{caption_html}
+    <div class="viewer" id="viewer" onclick="if(event.target===this)closeViewer()">
+      <div class="toolbar"><button onclick="zoomBy(1.35);event.stopPropagation()">＋</button><button onclick="zoomBy(0.75);event.stopPropagation()">−</button><button onclick="resetZoom();event.stopPropagation()">Reset</button><button onclick="closeViewer();event.stopPropagation()">Close ✕</button></div>
+      <div class="stage" id="stage"><img class="large" id="large" src="{data_url}" alt="Enlarged chart"></div>
+      <div class="modalhint">Pinch to zoom · drag to move · tap outside or Close to return</div>
+    </div>
+    <script>
+    const viewer=document.getElementById('viewer'),img=document.getElementById('large'),stage=document.getElementById('stage');
+    let scale=1,tx=0,ty=0,startX=0,startY=0,startTx=0,startTy=0,startDist=0,startScale=1,drag=false;
+    function apply(){{img.style.transform=`translate(${{tx}}px,${{ty}}px) scale(${{scale}})`;}}
+    function openViewer(){{viewer.classList.add('open');resetZoom();}}
+    function closeViewer(){{viewer.classList.remove('open');}}
+    function resetZoom(){{scale=1;tx=0;ty=0;apply();}}
+    function zoomBy(f){{scale=Math.max(1,Math.min(5,scale*f));apply();}}
+    function dist(a,b){{return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}}
+    stage.addEventListener('touchstart',e=>{{e.preventDefault();if(e.touches.length===2){{startDist=dist(e.touches[0],e.touches[1]);startScale=scale;}}else if(e.touches.length===1){{drag=true;startX=e.touches[0].clientX;startY=e.touches[0].clientY;startTx=tx;startTy=ty;}}}},{{passive:false}});
+    stage.addEventListener('touchmove',e=>{{e.preventDefault();if(e.touches.length===2&&startDist){{scale=Math.max(1,Math.min(5,startScale*dist(e.touches[0],e.touches[1])/startDist));apply();}}else if(e.touches.length===1&&drag&&scale>1){{tx=startTx+e.touches[0].clientX-startX;ty=startTy+e.touches[0].clientY-startY;apply();}}}},{{passive:false}});
+    stage.addEventListener('touchend',()=>{{drag=false;startDist=0;}});
+    stage.addEventListener('mousedown',e=>{{if(scale>1){{drag=true;startX=e.clientX;startY=e.clientY;startTx=tx;startTy=ty;}}}});
+    window.addEventListener('mousemove',e=>{{if(drag){{tx=startTx+e.clientX-startX;ty=startTy+e.clientY-startY;apply();}}}});
+    window.addEventListener('mouseup',()=>drag=false);
+    viewer.addEventListener('wheel',e=>{{e.preventDefault();zoomBy(e.deltaY<0?1.12:.89);}},{{passive:false}});
+    document.addEventListener('keydown',e=>{{if(e.key==='Escape')closeViewer();if(e.key==='+'||e.key==='=')zoomBy(1.2);if(e.key==='-')zoomBy(.8);}});
+    </script></body></html>'''
+    components.html(component_html, height=component_height, scrolling=False)
+
+
+PAGES = ["Home", "Prediction", "Model Insights", "Extra Insights", "Workflow"]
 if "main_nav" not in st.session_state:
     st.session_state.main_nav = "Home"
 
@@ -292,6 +345,17 @@ elif page == "Model Insights":
         st.write("Explore how feature rankings compare across interpretation methods, and what selected patterns may invite us to consider. The full Random Forest feature-importance chart appears on the Home page. Predictive importance is not causal evidence.")
         page_navigation()
 
+elif page == "Extra Insights":
+    with st.container(key="extra_insights_header"):
+        brand_line()
+        st.markdown(
+            "<div class='eyebrow'>Exploratory analysis</div>"
+            "<h1>Patterns beyond<br><span class='accent'>the model.</span></h1>",
+            unsafe_allow_html=True,
+        )
+        st.write("Explore age and gender patterns in WVS Wave 7 beyond the predictive machine learning analysis.")
+        page_navigation()
+
 elif page == "Workflow":
     with st.container(key="workflow_header"):
         brand_line()
@@ -323,7 +387,7 @@ if page == "Home":
 
     section_head("Top 20 feature ranking", "What stood out in the model",
                 "The 20 highest-ranked features from the evaluated Top30 Random Forest, shown with aggregated feature-importance percentages and concise descriptions.")
-    st.image(ASSET_DIR / "top20_importance_with_question_text.png", use_container_width=True)
+    show_zoomable_image(ASSET_DIR / "top20_importance_with_question_text.png", "Top 20 feature importance")
     st.caption("Importance percentages come from the Notebook 05a final Top30 model. Country aggregates country/region indicators and is not a questionnaire item.")
     st.markdown(
         "<div class='soft-note'>Q50 · Financial Satisfaction accounts for 29.70% of aggregated importance, followed by Country (13.15%) and Q48 · Freedom of Choice and Control (11.43%). The Top 20 features account for 87.48% of total aggregated importance. Feature importance describes model reliance, not causal effects.</div>",
@@ -334,7 +398,7 @@ if page == "Home":
                 "A SHAP dependence plot from the Top20 feature experiment in Notebook 05a.")
     plot_col, explain_col = st.columns([1.25, 1])
     with plot_col:
-        st.image(ASSET_DIR / "shap_q50_q288_dependence.png", use_container_width=True)
+        show_zoomable_image(ASSET_DIR / "shap_q50_q288_dependence.png", "SHAP dependence plot")
         st.caption("SHAP dependence plot · Q50 colored by Q288 · Notebook 05a")
     with explain_col:
         st.markdown(
@@ -461,7 +525,7 @@ elif page == "Model Insights":
 
     section_head("Interpretation methods", "Do the rankings agree?",
                 "Compare impurity-based Random Forest importance, permutation importance, and mean absolute SHAP rankings.")
-    st.image(ASSET_DIR / "ranking_across_methods.png", use_container_width=True)
+    show_zoomable_image(ASSET_DIR / "ranking_across_methods.png", "Feature rankings across interpretation methods")
     st.caption("Feature Ranking Across Three Interpretation Methods · rank 1 indicates the highest importance within each method.")
     st.markdown(
         "<div class='content-card'><h3>A stable core, with some variation</h3>"
@@ -480,7 +544,7 @@ elif page == "Model Insights":
 
     section_head("Country & social context", "Life satisfaction across 66 countries and regions",
                 "Country was an important predictor in the final model. The chart shows differences in average self-reported life satisfaction across the WVS Wave 7 country/region entries, labeled with country and region names.")
-    st.image(ASSET_DIR / "country_life_satisfaction.png", use_container_width=True)
+    show_zoomable_image(ASSET_DIR / "country_life_satisfaction.png", "Average life satisfaction across countries and regions")
     st.caption("Average life satisfaction by country/region, shown with country and region names rather than three-letter codes. The dashed line marks the overall respondent-level mean (7.06).")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Country-level differences may reflect many contextual and measurement factors. This chart is descriptive and does not identify which national conditions explain the differences.</p>"
@@ -545,9 +609,49 @@ elif page == "Model Insights":
         unsafe_allow_html=True,
     )
 
+elif page == "Extra Insights":
+    section_head("Beyond prediction", "Exploring patterns beyond the predictive model",
+                 "The main analysis used machine learning to explore how economic, social, and personal factors predict life satisfaction. These additional analyses are descriptive and do not train a new machine learning model.")
+    section_head("01 · Age patterns", "Does life satisfaction change with age?",
+                 "Weighted mean responses across age groups for life satisfaction (Q49), financial satisfaction (Q50), and perceived freedom and control (Q48).")
+    show_zoomable_image(ASSET_DIR / "age_patterns_three_outcomes.png", "Age patterns across three WVS self-reported outcomes")
+    st.markdown(
+        "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Life satisfaction and financial satisfaction show relatively lower means around midlife and higher means among older respondents. Perceived freedom and control follows a different pattern, suggesting that dimensions of subjective wellbeing may not move together across age groups.</p><div class='warm-note'>This raises a question: is the relationship between age and life satisfaction more complex than a simple linear trend?</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    section_head("02 · Gender differences", "Does the gender gap depend on age?",
+                 "The chart shows the female-minus-male difference in weighted mean Q49 within each age group.")
+    show_zoomable_image(ASSET_DIR / "gender_gap_by_age.png", "Female minus male weighted mean life satisfaction by age group")
+    st.markdown(
+        "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The overall difference in life satisfaction between women and men is small. However, the direction of the difference varies across age groups. Women report slightly higher average life satisfaction in several younger and middle-age groups, while men report higher averages in the older groups.</p><div class='warm-note'>Rather than suggesting a universal gender difference, this pattern points to possible variation across different stages of life.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    section_head("03 · Across countries", "Are gender differences consistent across countries?",
+                 "Each bar represents the difference between women’s and men’s weighted mean Q49 within a country or region.")
+    show_zoomable_image(ASSET_DIR / "country_gender_gap_full_names.png", "Country-level gender gap in life satisfaction; positive values indicate higher female means")
+    st.markdown(
+        "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The gender gap is not uniform across countries and regions. In some places, women report higher average life satisfaction; in others, men report higher averages. A pooled global average can therefore conceal meaningful differences between country-level patterns.</p><div class='warm-note'>Positive values indicate a higher female mean; negative values indicate a higher male mean. The chart shows within-country gender gaps, not a ranking of countries by life satisfaction.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+    section_head("Further reflections", "What might these patterns invite us to ask?")
+    r1, r2, r3 = st.columns(3)
+    with r1:
+        reflection_card("QUESTION 01", "Age and context", "How much of the age pattern remains after accounting for country differences?")
+    with r2:
+        reflection_card("QUESTION 02", "Different dimensions", "Do social support, financial security, and perceived freedom relate to life satisfaction differently across age groups?")
+    with r3:
+        reflection_card("QUESTION 03", "Cross-national variation", "To what extent might cultural and institutional contexts shape gender differences in subjective wellbeing?")
+    st.markdown(
+        "<div class='soft-note' style='margin-top:1.1rem'>These are exploratory, weighted descriptive analyses of cross-sectional survey responses. They identify patterns and associations, not causal effects, and are separate from the predictive machine learning model used in the main project.</div>",
+        unsafe_allow_html=True,
+    )
+
 elif page == "Workflow":
     section_head("Research workflow", "10 steps · 5 layers")
-    st.image(ASSET_DIR / "research_workflow_warm_sun.png", use_container_width=True)
+    show_zoomable_image(ASSET_DIR / "research_workflow_warm_sun.png", "Research workflow")
     st.caption("Workflow diagram based on the original project workflow. The original structure and step icons are retained, with the blue accents shifted to a warm terracotta palette.")
 
     section_head("Notebook sequence", "The research notebooks")
