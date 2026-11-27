@@ -6,6 +6,8 @@ import base64
 import html
 import streamlit as st
 import streamlit.components.v1 as components
+import plotly.express as px
+import plotly.graph_objects as go
 
 APP_DIR = Path(__file__).parent
 ASSET_DIR = APP_DIR / "assets"
@@ -63,26 +65,36 @@ def load_app_model():
 
 
 def apply_user_imputation(row, bundle):
-    features = bundle["features"]
-    stats = bundle["imputer_stats"]
-    result = {feature: row.get(feature) for feature in features}
-    country = row["Country"]
-    income = result.get("Q288")
-    if income is None or pd.isna(income):
-        income = stats["q288_country"].get(country, stats["q288_global"])
-        result["Q288"] = income
-    for feature in features:
-        if feature == "Q288":
-            continue
+    """Fill skipped survey responses using global medians; Country is not used."""
+    result = {feature: row.get(feature) for feature in bundle["features"]}
+    medians = bundle["imputer_medians"]
+    for feature in bundle["features"]:
         value = result.get(feature)
         if value is None or pd.isna(value):
-            group_value = stats["country_income"][feature].get((country, float(income)), np.nan)
-            country_value = stats["country"][feature].get(country, np.nan)
-            value = group_value
-            if pd.isna(value): value = country_value
-            if pd.isna(value): value = stats["global"][feature]
-            result[feature] = value
+            result[feature] = medians[feature]
     return result
+
+
+def load_chart_data(filename):
+    return pd.read_csv(ASSET_DIR / filename)
+
+
+def plotly_warm(fig, height=430):
+    fig.update_layout(
+        height=height, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFEFC",
+        font=dict(family="DM Sans, sans-serif", color="#2D211D"),
+        margin=dict(l=18, r=18, t=35, b=25),
+        colorway=["#D95B18", "#7D927B", "#D9A06A", "#8C7568", "#C98263"],
+        xaxis=dict(gridcolor="#F0E7DE", zerolinecolor="#D8C9BC"),
+        yaxis=dict(gridcolor="#F0E7DE", zerolinecolor="#D8C9BC"),
+        legend=dict(bgcolor="rgba(255,254,252,.7)")
+    )
+    return fig
+
+
+def show_plotly(fig, height=430):
+    fig = plotly_warm(fig, height)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True, "responsive": True})
 
 
 def country_label(code):
@@ -208,6 +220,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+
+def show_html_figure(image_path, caption=None, height=460):
+    """Responsive HTML image frame for source figures whose underlying arrays were not retained."""
+    image_path = Path(image_path)
+    mime = "image/png" if image_path.suffix.lower() == ".png" else "image/jpeg"
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    caption_html = f"<p class='fig-caption'>{html.escape(caption)}</p>" if caption else ""
+    markup = f"""<div style='background:#FFFEFC;border:1px solid #E8DCD0;border-radius:20px;padding:12px;overflow:hidden'>
+      <img src='data:{mime};base64,{encoded}' alt='Research figure' style='display:block;width:100%;height:auto;max-height:780px;object-fit:contain;border-radius:12px'>
+      {caption_html}</div><style>.fig-caption{{font:12px 'DM Sans',sans-serif;color:#786B63;margin:8px 4px 2px;line-height:1.5}}</style>"""
+    components.html(markup, height=height, scrolling=True)
 
 
 def section_head(label, title=None, subtitle=None):
@@ -444,13 +468,13 @@ if page == "Home":
     section_head("Top 20 feature ranking", "What stood out in the model",
                 "The 20 highest-ranked features in the feature-importance analysis, shown as aggregated percentages.")
     show_feature_importance_html()
-    st.caption("Higher bars show features the model relied on more; this is predictive importance, not evidence of cause.")
+    st.caption("Higher bars show features the research model relied on more; Country appears in the research ranking but is not an input in the interactive prediction survey.")
 
     section_head("A finding to explore", "Financial satisfaction in the model",
                 "A SHAP dependence plot from the Top20 feature experiment in Notebook 05a.")
     plot_col, explain_col = st.columns([1.25, 1])
     with plot_col:
-        show_zoomable_image(ASSET_DIR / "shap_q50_q288_dependence.png", "SHAP dependence plot")
+        show_html_figure(ASSET_DIR / "shap_q50_q288_dependence.png", "SHAP dependence plot", height=500)
         st.caption("Each dot is a respondent: see how financial satisfaction contributes to the model’s prediction, with color showing income position.")
     with explain_col:
         st.markdown(
@@ -472,12 +496,11 @@ if page == "Home":
 
 elif page == "Prediction":
     st.markdown(
-        "<div class='warm-note'><strong>Model choice:</strong> In the Notebook 05a feature-count experiments, the Top 30 Random Forest performed slightly better than Top 20 (5-fold CV R² = 0.4533 vs. 0.4460). This interactive version uses 20 model inputs for ease of completion: 19 survey questions plus Country/region. The reduced-input model is separate from the Top 30 model. To keep the downloadable artifact lighter, the App uses a 100-tree sub-ensemble from a 200-tree reduced-input fit. The Notebook Top20 CV score used fold-wise feature selection; these scores are context, not a direct evaluation of this exact fixed App input set.</div>",
+        "<div class='warm-note'><strong>Model choice:</strong> In the Notebook 05a feature-count experiments, the Top 30 Random Forest performed slightly better than Top 20 (5-fold CV R² = 0.4533 vs. 0.4460). The interactive prediction model was retrained with 19 survey questions and no Country input. Skipped responses are filled using global median values. The Notebook Top20/Top30 experiments are separate research models; their scores are context rather than direct evaluations of this app model.</div>",
         unsafe_allow_html=True,
     )
-    st.caption("You may skip any survey response. Skipped items are imputed using the training-data hierarchical imputation procedure; more skipped answers mean the profile relies more on typical values.")
+    st.caption("You may skip any survey response. Skipped items are imputed using global median values from valid WVS responses; more skipped answers mean the profile relies more on typical values.")
     bundle = load_app_model()
-    country_codes = list(bundle["encoder"].categories_[0])
     step_labels = ["01 · Wellbeing", "02 · Society & outlook", "03 · Values & community"]
     # Use buttons rather than a radio widget for section navigation. A radio's
     # widget state can override question_step on the rerun after form submission,
@@ -499,25 +522,7 @@ elif page == "Prediction":
     responses = st.session_state.get("wvs_responses", {})
     with st.form(f"prediction_form_{idx}"):
         if idx == 0:
-            st.caption("Required for prediction: choose one of the 66 WVS Wave 7 countries/regions represented in the model training data. The model cannot generate a country-specific estimate for a location outside this list.")
-            country_code = st.selectbox(
-                "Country / region (required)",
-                country_codes,
-                index=None,
-                placeholder="Select a country or region…",
-                format_func=country_label,
-                key="wvs_country_input",
-                help="Only the 66 country/region categories included in WVS Wave 7 model training are supported.",
-            )
-        else:
-            # Widget keys are cleaned up by Streamlit when a widget is not
-            # rendered on the current rerun. Keep the submitted country in a
-            # separate non-widget session key so it survives section changes.
-            country_code = st.session_state.get("wvs_country_saved")
-            if country_code is None:
-                st.warning("Please return to Section 1 and select a country/region before continuing.")
-            else:
-                st.info(f"Country / region: {country_label(country_code)} (selected in Section 1)")
+            st.caption("Country is not required. The prediction uses your survey responses only, so you can complete it regardless of where you live.")
         cols = st.columns(2)
         for i, feature in enumerate(features):
             short, prompt, scale, valid_values, endpoint_labels = QUESTION_INFO[feature]
@@ -533,27 +538,13 @@ elif page == "Prediction":
         submitted = st.form_submit_button("Predict life satisfaction" if idx == 2 else "Save responses & continue →", type="primary")
     st.session_state["wvs_responses"] = responses
     if submitted:
-        # On Section 1, copy the form widget value into a persistent session
-        # key before changing sections. Streamlit may discard the widget key
-        # once its selectbox is no longer rendered.
-        if idx == 0:
-            selected_country = st.session_state.get("wvs_country_input")
-            if selected_country is not None:
-                st.session_state["wvs_country_saved"] = selected_country
-        else:
-            selected_country = st.session_state.get("wvs_country_saved")
-        if selected_country is None:
-            st.warning("Please select one of the supported 66 countries/regions in Section 1. Country/region is required for prediction.")
-        elif idx < 2:
+        if idx < 2:
             st.session_state.question_step = idx + 1
             st.rerun()
         else:
             user_row = {feature: responses.get(feature) for feature in bundle["features"]}
-            user_row["Country"] = selected_country
             imputed = apply_user_imputation(user_row, bundle)
-            survey_values = np.array([float(imputed[f]) for f in bundle["features"]], dtype=float).reshape(1, -1)
-            country_values = bundle["encoder"].transform(pd.DataFrame({"Country": [user_row["Country"]]}))
-            model_input = np.hstack([survey_values, country_values])
+            model_input = np.array([float(imputed[f]) for f in bundle["features"]], dtype=float).reshape(1, -1)
             prediction = float(bundle["model"].predict(model_input)[0])
             st.session_state["wvs_prediction"] = prediction
             st.session_state["wvs_prediction_ready"] = True
@@ -567,14 +558,15 @@ elif page == "Prediction":
         st.progress(min(max(prediction / 10, 0.0), 1.0))
     with st.expander("About this reduced-input model"):
         metrics = bundle["app_model_test_metrics"]
-        st.write(f"The App’s 100-tree reduced-input sub-ensemble was evaluated on the provided test split: R² = {metrics['R2']:.4f}, MAE = {metrics['MAE']:.4f}, RMSE = {metrics['RMSE']:.4f}.")
-        st.caption("The test split was used in earlier project analyses, so these results are supplementary rather than a fresh independent evaluation. The 5-fold CV comparison above is the basis for noting that Top 30 performed better than Top 20 in the Notebook 05a feature-count experiment.")
+        st.write(f"The 100-tree app model without Country was evaluated on the provided test split: R² = {metrics['R2']:.4f}, MAE = {metrics['MAE']:.4f}, RMSE = {metrics['RMSE']:.4f}.")
+        st.caption("Removing Country reduced predictive performance compared with the previous app model that included Country (previous test R² ≈ 0.450; MAE ≈ 1.186). The current test split was used in earlier project analyses, so these results are indicative rather than a fresh independent evaluation.")
+        st.caption("The 5-fold CV comparison above refers to the separate Notebook 05a feature-count experiments, not this no-Country app model.")
 
 elif page == "Model Insights":
 
     section_head("Interpretation methods", "Do the rankings agree?",
                 "Compare impurity-based Random Forest importance, permutation importance, and mean absolute SHAP rankings.")
-    show_zoomable_image(ASSET_DIR / "ranking_across_methods.png", "Feature rankings across interpretation methods")
+    show_html_figure(ASSET_DIR / "ranking_across_methods.png", "Feature rankings across interpretation methods", height=500)
     st.caption("Each method ranks features by importance; rank 1 is the highest within that method.")
     st.markdown(
         "<div class='content-card'><h3>A stable core, with some variation</h3>"
@@ -592,9 +584,12 @@ elif page == "Model Insights":
     )
 
     section_head("Country & social context", "Life satisfaction across 66 countries and regions",
-                "Country was an important predictor in the final model. The chart shows differences in average self-reported life satisfaction across the WVS Wave 7 country/region entries, labeled with country and region names.")
-    show_zoomable_image(ASSET_DIR / "country_life_satisfaction.png", "Average life satisfaction across countries and regions")
-    st.caption("Country/region averages; the dashed line marks the overall respondent mean (7.06).")
+                "Country appeared as an important predictor in the original research model, but it is intentionally excluded from the interactive survey. This chart shows weighted differences in average self-reported life satisfaction across WVS Wave 7 country/region entries.")
+    country_df = load_chart_data("country_summary_data.csv").sort_values("mean_q49", ascending=True)
+    country_fig = px.bar(country_df, x="mean_q49", y="country", orientation="h", hover_data={"code": True, "n": True, "mean_q49": ":.2f"}, labels={"mean_q49":"Weighted mean life satisfaction (Q49)","country":"Country / region"})
+    country_fig.add_vline(x=7.06, line_dash="dash", line_color="#8C7568", annotation_text="Overall mean 7.06")
+    show_plotly(country_fig, height=920)
+    st.caption("Weighted country/region averages; hover over bars for the country code and response count.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Country-level differences may reflect many contextual and measurement factors. This chart is descriptive and does not identify which national conditions explain the differences.</p>"
         "<p><strong>Questions to consider</strong></p><ul><li>Why do average life satisfaction levels differ across countries—and how much might these differences reflect social conditions, cultural contexts, or response patterns?</li>"
@@ -624,7 +619,7 @@ elif page == "Model Insights":
     m1, m2 = st.columns([1, 1])
     with m1:
         st.markdown(
-            "<div class='content-card'><div class='method-item'><div class='method-icon'>✦</div><div><div class='method-name'>Data cleaning & imputation</div><div class='method-detail'>Special-code handling and hierarchical imputation.</div></div></div>"
+            "<div class='content-card'><div class='method-item'><div class='method-icon'>✦</div><div><div class='method-name'>Data cleaning & imputation</div><div class='method-detail'>Special-code handling; app predictions use global median imputation.</div></div></div>"
             "<div class='method-item'><div class='method-icon'>⌁</div><div><div class='method-name'>Feature selection</div><div class='method-detail'>Assessment and comparison of selected survey feature sets.</div></div></div>"
             "<div class='method-item'><div class='method-icon'>▥</div><div><div class='method-name'>Model comparison</div><div class='method-detail'>Linear Regression, Decision Tree and Random Forest.</div></div></div></div>",
             unsafe_allow_html=True,
@@ -633,7 +628,7 @@ elif page == "Model Insights":
         st.markdown(
             "<div class='content-card'><div class='method-item'><div class='method-icon'>↔</div><div><div class='method-name'>Cross-validation</div><div class='method-detail'>Compare predictive performance across validation folds.</div></div></div>"
             "<div class='method-item'><div class='method-icon'>⌖</div><div><div class='method-name'>Model interpretation</div><div class='method-detail'>Feature Importance, Permutation Importance and SHAP.</div></div></div>"
-            "<div class='soft-note' style='margin-top:1rem'>The interactive Prediction page uses a separately trained reduced-input Random Forest (19 survey questions + Country). The strongest evaluated configuration in Notebook 05a remains Top30.</div></div>",
+            "<div class='soft-note' style='margin-top:1rem'>The interactive Prediction page uses a separately trained Random Forest with 19 survey questions and no Country input. The strongest evaluated configuration in Notebook 05a remains Top30.</div></div>",
             unsafe_allow_html=True,
         )
 
@@ -663,8 +658,12 @@ elif page == "Extra Insights":
                  "The main analysis used machine learning to explore how economic, social, and personal factors predict life satisfaction. These additional analyses are descriptive and do not train a new machine learning model.")
     section_head("01 · Age patterns", "Does life satisfaction change with age?",
                  "Weighted mean responses across age groups for life satisfaction (Q49), financial satisfaction (Q50), and perceived freedom and control (Q48).")
-    show_zoomable_image(ASSET_DIR / "age_patterns_three_outcomes.png", "Age patterns across three WVS self-reported outcomes")
-    st.caption("Weighted average responses by age group for life satisfaction, financial satisfaction, and perceived freedom.")
+    age_df = load_chart_data("age_patterns_data.csv")
+    age_long = age_df.melt(id_vars="age_group", value_vars=["Q49", "Q50", "Q48"], var_name="measure", value_name="weighted_mean")
+    age_long["measure"] = age_long["measure"].map({"Q49":"Life satisfaction (Q49)","Q50":"Financial satisfaction (Q50)","Q48":"Freedom & control (Q48)"})
+    age_fig = px.line(age_long, x="age_group", y="weighted_mean", color="measure", markers=True, labels={"age_group":"Age group","weighted_mean":"Weighted mean response","measure":"Survey item"})
+    show_plotly(age_fig, height=430)
+    st.caption("Weighted average responses by age group. Hover to compare the three survey items.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Life satisfaction and financial satisfaction show relatively lower means around midlife and higher means among older respondents. Perceived freedom and control follows a different pattern, suggesting that dimensions of subjective wellbeing may not move together across age groups.</p><div class='warm-note'>This raises a question: is the relationship between age and life satisfaction more complex than a simple linear trend?</div></div>",
         unsafe_allow_html=True,
@@ -672,7 +671,10 @@ elif page == "Extra Insights":
 
     section_head("02 · Gender differences", "Does the gender gap depend on age?",
                  "The chart shows the female-minus-male difference in weighted mean Q49 within each age group.")
-    show_zoomable_image(ASSET_DIR / "gender_gap_by_age.png", "Female minus male weighted mean life satisfaction by age group")
+    gender_age = load_chart_data("gender_gap_age_data.csv")
+    gap_fig = px.bar(gender_age, x="age_group", y="gap_female_minus_male", hover_data={"female_mean":":.2f","male_mean":":.2f","n_female":True,"n_male":True}, labels={"age_group":"Age group","gap_female_minus_male":"Female − male weighted mean (Q49)"})
+    gap_fig.add_hline(y=0, line_dash="dash", line_color="#8C7568")
+    show_plotly(gap_fig, height=400)
     st.caption("Positive values mean women report a higher average; negative values mean men do.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The overall difference in life satisfaction between women and men is small. However, the direction of the difference varies across age groups. Women report slightly higher average life satisfaction in several younger and middle-age groups, while men report higher averages in the older groups.</p><div class='warm-note'>Rather than suggesting a universal gender difference, this pattern points to possible variation across different stages of life.</div></div>",
@@ -681,8 +683,11 @@ elif page == "Extra Insights":
 
     section_head("03 · Across countries", "Are gender differences consistent across countries?",
                  "Each bar represents the difference between women’s and men’s weighted mean Q49 within a country or region.")
-    show_zoomable_image(ASSET_DIR / "country_gender_gap_full_names.png", "Country-level gender gap in life satisfaction; positive values indicate higher female means")
-    st.caption("Each bar shows the within-country female-minus-male difference in weighted life-satisfaction averages.")
+    country_gap = load_chart_data("country_summary_data.csv").dropna(subset=["gender_gap"]).sort_values("gender_gap")
+    gap_country_fig = px.bar(country_gap, x="gender_gap", y="country", orientation="h", hover_data={"code":True,"female_mean":":.2f","male_mean":":.2f","n":True}, labels={"gender_gap":"Female − male weighted mean (Q49)","country":"Country / region"})
+    gap_country_fig.add_vline(x=0, line_dash="dash", line_color="#8C7568")
+    show_plotly(gap_country_fig, height=1200)
+    st.caption("Each bar shows the within-country female-minus-male difference. Hover for country code and group means.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The gender gap is not uniform across countries and regions. In some places, women report higher average life satisfaction; in others, men report higher averages. A pooled global average can therefore conceal meaningful differences between country-level patterns.</p><div class='warm-note'>Positive values indicate a higher female mean; negative values indicate a higher male mean. The chart shows within-country gender gaps, not a ranking of countries by life satisfaction.</div></div>",
         unsafe_allow_html=True,
