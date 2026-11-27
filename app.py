@@ -658,12 +658,8 @@ elif page == "Extra Insights":
                  "The main analysis used machine learning to explore how economic, social, and personal factors predict life satisfaction. These additional analyses are descriptive and do not train a new machine learning model.")
     section_head("01 · Age patterns", "Does life satisfaction change with age?",
                  "Weighted mean responses across age groups for life satisfaction (Q49), financial satisfaction (Q50), and perceived freedom and control (Q48).")
-    age_df = load_chart_data("age_patterns_data.csv")
-    age_long = age_df.melt(id_vars="age_group", value_vars=["Q49", "Q50", "Q48"], var_name="measure", value_name="weighted_mean")
-    age_long["measure"] = age_long["measure"].map({"Q49":"Life satisfaction (Q49)","Q50":"Financial satisfaction (Q50)","Q48":"Freedom & control (Q48)"})
-    age_fig = px.line(age_long, x="age_group", y="weighted_mean", color="measure", markers=True, labels={"age_group":"Age group","weighted_mean":"Weighted mean response","measure":"Survey item"})
-    show_plotly(age_fig, height=430)
-    st.caption("Weighted average responses by age group. Hover to compare the three survey items.")
+    show_zoomable_image(ASSET_DIR / "age_patterns_three_outcomes.png", "Age patterns across three WVS self-reported outcomes", component_height=500)
+    st.caption("Weighted average responses by age group for life satisfaction, financial satisfaction, and perceived freedom.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Life satisfaction and financial satisfaction show relatively lower means around midlife and higher means among older respondents. Perceived freedom and control follows a different pattern, suggesting that dimensions of subjective wellbeing may not move together across age groups.</p><div class='warm-note'>This raises a question: is the relationship between age and life satisfaction more complex than a simple linear trend?</div></div>",
         unsafe_allow_html=True,
@@ -671,10 +667,7 @@ elif page == "Extra Insights":
 
     section_head("02 · Gender differences", "Does the gender gap depend on age?",
                  "The chart shows the female-minus-male difference in weighted mean Q49 within each age group.")
-    gender_age = load_chart_data("gender_gap_age_data.csv")
-    gap_fig = px.bar(gender_age, x="age_group", y="gap_female_minus_male", hover_data={"female_mean":":.2f","male_mean":":.2f","n_female":True,"n_male":True}, labels={"age_group":"Age group","gap_female_minus_male":"Female − male weighted mean (Q49)"})
-    gap_fig.add_hline(y=0, line_dash="dash", line_color="#8C7568")
-    show_plotly(gap_fig, height=400)
+    show_zoomable_image(ASSET_DIR / "gender_gap_by_age.png", "Female minus male weighted mean life satisfaction by age group", component_height=450)
     st.caption("Positive values mean women report a higher average; negative values mean men do.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The overall difference in life satisfaction between women and men is small. However, the direction of the difference varies across age groups. Women report slightly higher average life satisfaction in several younger and middle-age groups, while men report higher averages in the older groups.</p><div class='warm-note'>Rather than suggesting a universal gender difference, this pattern points to possible variation across different stages of life.</div></div>",
@@ -683,11 +676,8 @@ elif page == "Extra Insights":
 
     section_head("03 · Across countries", "Are gender differences consistent across countries?",
                  "Each bar represents the difference between women’s and men’s weighted mean Q49 within a country or region.")
-    country_gap = load_chart_data("country_summary_data.csv").dropna(subset=["gender_gap"]).sort_values("gender_gap")
-    gap_country_fig = px.bar(country_gap, x="gender_gap", y="country", orientation="h", hover_data={"code":True,"female_mean":":.2f","male_mean":":.2f","n":True}, labels={"gender_gap":"Female − male weighted mean (Q49)","country":"Country / region"})
-    gap_country_fig.add_vline(x=0, line_dash="dash", line_color="#8C7568")
-    show_plotly(gap_country_fig, height=1200)
-    st.caption("Each bar shows the within-country female-minus-male difference. Hover for country code and group means.")
+    show_zoomable_image(ASSET_DIR / "country_gender_gap_full_names.png", "Country-level gender gap in life satisfaction; positive values indicate higher female means", component_height=700)
+    st.caption("Each bar shows the within-country female-minus-male difference in weighted life-satisfaction averages.")
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>The gender gap is not uniform across countries and regions. In some places, women report higher average life satisfaction; in others, men report higher averages. A pooled global average can therefore conceal meaningful differences between country-level patterns.</p><div class='warm-note'>Positive values indicate a higher female mean; negative values indicate a higher male mean. The chart shows within-country gender gaps, not a ranking of countries by life satisfaction.</div></div>",
         unsafe_allow_html=True,
