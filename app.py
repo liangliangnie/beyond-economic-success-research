@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 APP_DIR = Path(__file__).parent
 ASSET_DIR = APP_DIR / "assets"
 
-# v13 hotfix: restore shared section_head and reflection_card helpers
+# v24: mobile country chart and compact native responsive insight images
 st.set_page_config(
     page_title="Beyond Economic Success",
     page_icon="☀️",
@@ -268,7 +268,11 @@ st.markdown(
       .workflow-layer-4 .workflow-step ul, .workflow-layer-5 .workflow-step ul { columns:1; }
     }
     /* Mobile-first refinements: comfortable reading, tapping and chart viewing */
+    /* Country comparison: use a compact, legible subset on phones; keep all 66 on desktop. */
+    .st-key-country_mobile_chart { display:none; }
     @media(max-width:640px) {
+      .st-key-country_full_chart { display:none !important; }
+      .st-key-country_mobile_chart { display:block !important; }
       .block-container { padding: .55rem .72rem 2.5rem !important; }
       h1 { font-size:clamp(2.05rem,9vw,2.75rem)!important; line-height:1.06!important; }
       h2 { font-size:1.52rem!important; line-height:1.16!important; }
@@ -374,52 +378,9 @@ def reflection_card(num, title, question):
     )
 
 
-def show_zoomable_image(image_path, caption=None, component_height=470):
-    # Responsive preview with an in-frame modal, zoom controls, pinch and pan.
-    image_path = Path(image_path)
-    mime = "image/png" if image_path.suffix.lower() == ".png" else "image/jpeg"
-    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
-    data_url = f"data:{mime};base64,{encoded}"
-    caption_html = f"<div class='zoom-caption'>{html.escape(caption)}</div>" if caption else ""
-    component_html = f'''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes"><style>
-    *{{box-sizing:border-box}} body{{margin:0;font-family:Arial,sans-serif;background:transparent;color:#786B63}}
-    .preview{{width:100%;display:block;border-radius:12px;cursor:zoom-in;max-height:420px;object-fit:contain;background:#fff}}
-    .hint{{font-size:12px;text-align:center;margin:7px 0 0;color:#8a7a70}}
-    .zoom-caption{{font-size:12px;color:#786B63;margin-top:7px;line-height:1.45}}
-    .viewer{{display:none;position:fixed;inset:0;z-index:9999;background:rgba(35,25,20,.96);padding:42px 8px 10px;overflow:hidden;touch-action:none}}
-    .viewer.open{{display:block}}
-    .toolbar{{position:absolute;top:6px;left:8px;right:8px;display:flex;justify-content:flex-end;gap:7px;z-index:2}}
-    button{{border:1px solid rgba(255,255,255,.35);background:#fff;color:#2D211D;border-radius:999px;padding:8px 12px;font-size:15px;font-weight:700;cursor:pointer}}
-    .stage{{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}}
-    .large{{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none;touch-action:none}}
-    .modalhint{{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#fff;font-size:11px;opacity:.8;pointer-events:none}}
-    </style></head><body>
-    <img class="preview" src="{data_url}" alt="Chart preview" onclick="openViewer()">
-    <div class="hint">Tap image to enlarge · pinch or use + / − to zoom</div>{caption_html}
-    <div class="viewer" id="viewer" onclick="if(event.target===this)closeViewer()">
-      <div class="toolbar"><button onclick="zoomBy(1.35);event.stopPropagation()">＋</button><button onclick="zoomBy(0.75);event.stopPropagation()">−</button><button onclick="resetZoom();event.stopPropagation()">Reset</button><button onclick="closeViewer();event.stopPropagation()">Close ✕</button></div>
-      <div class="stage" id="stage"><img class="large" id="large" src="{data_url}" alt="Enlarged chart"></div>
-      <div class="modalhint">Pinch to zoom · drag to move · tap outside or Close to return</div>
-    </div>
-    <script>
-    const viewer=document.getElementById('viewer'),img=document.getElementById('large'),stage=document.getElementById('stage');
-    let scale=1,tx=0,ty=0,startX=0,startY=0,startTx=0,startTy=0,startDist=0,startScale=1,drag=false;
-    function apply(){{img.style.transform=`translate(${{tx}}px,${{ty}}px) scale(${{scale}})`;}}
-    function openViewer(){{viewer.classList.add('open');resetZoom();}}
-    function closeViewer(){{viewer.classList.remove('open');}}
-    function resetZoom(){{scale=1;tx=0;ty=0;apply();}}
-    function zoomBy(f){{scale=Math.max(1,Math.min(5,scale*f));apply();}}
-    function dist(a,b){{return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}}
-    stage.addEventListener('touchstart',e=>{{e.preventDefault();if(e.touches.length===2){{startDist=dist(e.touches[0],e.touches[1]);startScale=scale;}}else if(e.touches.length===1){{drag=true;startX=e.touches[0].clientX;startY=e.touches[0].clientY;startTx=tx;startTy=ty;}}}},{{passive:false}});
-    stage.addEventListener('touchmove',e=>{{e.preventDefault();if(e.touches.length===2&&startDist){{scale=Math.max(1,Math.min(5,startScale*dist(e.touches[0],e.touches[1])/startDist));apply();}}else if(e.touches.length===1&&drag&&scale>1){{tx=startTx+e.touches[0].clientX-startX;ty=startTy+e.touches[0].clientY-startY;apply();}}}},{{passive:false}});
-    stage.addEventListener('touchend',()=>{{drag=false;startDist=0;}});
-    stage.addEventListener('mousedown',e=>{{if(scale>1){{drag=true;startX=e.clientX;startY=e.clientY;startTx=tx;startTy=ty;}}}});
-    window.addEventListener('mousemove',e=>{{if(drag){{tx=startTx+e.clientX-startX;ty=startTy+e.clientY-startY;apply();}}}});
-    window.addEventListener('mouseup',()=>drag=false);
-    viewer.addEventListener('wheel',e=>{{e.preventDefault();zoomBy(e.deltaY<0?1.12:.89);}},{{passive:false}});
-    document.addEventListener('keydown',e=>{{if(e.key==='Escape')closeViewer();if(e.key==='+'||e.key==='=')zoomBy(1.2);if(e.key==='-')zoomBy(.8);}});
-    </script></body></html>'''
-    components.html(component_html, height=component_height, scrolling=False)
+def show_zoomable_image(image_path, caption=None, component_height=None):
+    """Show a responsive native image; avoids fixed-height iframe whitespace on mobile."""
+    st.image(str(image_path), use_container_width=True)
 
 
 PAGES = ["Home", "Prediction", "Model Insights", "Extra Insights", "Workflow"]
@@ -705,25 +666,54 @@ elif page == "Model Insights":
                 "Country appeared as an important predictor in the original research model, but it is intentionally excluded from the interactive survey. This chart shows weighted differences in average self-reported life satisfaction across WVS Wave 7 country/region entries.")
     country_df = load_chart_data("country_summary_data.csv").sort_values("mean_q49", ascending=True)
     country_df = country_df.sort_values("mean_q49", ascending=True).copy()
-    country_fig = px.bar(
-        country_df, x="mean_q49", y="country", orientation="h",
-        hover_data={"code": True, "n": True, "mean_q49": ":.2f"},
-        labels={"mean_q49":"Weighted mean life satisfaction (Q49)","country":"Country / region"},
-        text=None,
-    )
-    country_fig.update_yaxes(
-        automargin=True, ticklabelposition="outside", tickfont=dict(size=11),
-        title_text="Country / region",
-    )
-    country_fig.update_xaxes(range=[0, 9], tickformat=".1f")
-    country_fig.add_vline(
-        x=7.06, line_dash="dash", line_color="#8C7568",
-        annotation_text="Overall mean 7.06", annotation_position="top",
-    )
-    # Extra left margin prevents country names from being clipped; a taller chart
-    # gives each of the 66 country/region labels enough vertical space.
-    show_plotly(country_fig, height=1450, margin=dict(l=225, r=155, t=65, b=45))
-    st.caption("All 66 country/region names are shown directly on the chart. Hover for the country code and response count.")
+    # Desktop: full ranking of all 66 country/region entries.
+    with st.container(key="country_full_chart"):
+        country_fig = px.bar(
+            country_df, x="mean_q49", y="country", orientation="h",
+            hover_data={"code": True, "n": True, "mean_q49": ":.2f"},
+            labels={"mean_q49":"Weighted mean life satisfaction (Q49)","country":"Country / region"},
+            text=None,
+        )
+        country_fig.update_yaxes(
+            automargin=True, ticklabelposition="outside", tickfont=dict(size=11),
+            title_text="Country / region",
+        )
+        country_fig.update_xaxes(range=[0, 9], tickformat=".1f")
+        country_fig.add_vline(
+            x=7.06, line_dash="dash", line_color="#8C7568",
+            annotation_text="Overall mean 7.06", annotation_position="top",
+        )
+        show_plotly(country_fig, height=1450, margin=dict(l=225, r=155, t=65, b=45))
+        st.caption("Desktop view: all 66 country/region names are shown. Hover for the country code and response count.")
+
+    # Mobile: show the 10 lowest and 10 highest means so bars and values remain legible.
+    mobile_country_df = pd.concat([country_df.head(10), country_df.tail(10)]).copy()
+    mobile_country_df = mobile_country_df.sort_values("mean_q49", ascending=True)
+    with st.container(key="country_mobile_chart"):
+        mobile_fig = px.bar(
+            mobile_country_df, x="mean_q49", y="country", orientation="h",
+            text=mobile_country_df["mean_q49"].map(lambda value: f"{value:.2f}"),
+            hover_data={"code": True, "n": True, "mean_q49": ":.2f"},
+            labels={"mean_q49":"Weighted mean Q49","country":"Country / region"},
+        )
+        mobile_fig.update_traces(
+            textposition="outside", cliponaxis=False,
+            marker_color="#D95B18", textfont=dict(size=10, color="#2D211D"),
+        )
+        mobile_fig.update_yaxes(
+            automargin=True, ticklabelposition="outside", tickfont=dict(size=10),
+            title_text="", categoryorder="array",
+            categoryarray=mobile_country_df["country"].tolist(),
+        )
+        mobile_fig.update_xaxes(range=[0, 9], tickformat=".1f", tickfont=dict(size=10))
+        mobile_fig.add_vline(x=7.06, line_dash="dash", line_color="#8C7568")
+        mobile_fig.update_layout(
+            title=dict(text="10 lowest and 10 highest country/region means", font=dict(size=13)),
+            height=690, margin=dict(l=135, r=48, t=48, b=45),
+            bargap=0.22,
+        )
+        show_plotly(mobile_fig, height=690, margin=dict(l=135, r=48, t=48, b=45))
+        st.caption("Mobile view: the 10 lowest and 10 highest means are shown for readability. The table below contains all 66 entries.")
     country_table = country_df.sort_values("mean_q49", ascending=False)[["country", "code", "mean_q49", "n"]].rename(
         columns={"country":"Country / region", "code":"Code", "mean_q49":"Weighted mean Q49", "n":"Responses"}
     )
@@ -832,7 +822,7 @@ elif page == "Extra Insights":
     with r3:
         reflection_card("QUESTION 03", "Cross-national variation", "To what extent might cultural and institutional contexts shape gender differences in subjective wellbeing?")
     st.markdown(
-        "<div class='soft-note' style='margin-top:1.1rem'>These are exploratory, weighted descriptive analyses of cross-sectional survey responses. They identify patterns and associations, not causal effects, and are separate from the predictive machine learning model used in the main project.</div>",
+        "<div class='soft-note' style='margin-top:.5rem'>These are exploratory, weighted descriptive analyses of cross-sectional survey responses. They identify patterns and associations, not causal effects, and are separate from the predictive machine learning model used in the main project.</div>",
         unsafe_allow_html=True,
     )
 
