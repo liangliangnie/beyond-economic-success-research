@@ -100,3 +100,10 @@ streamlit run app.py
 World Values Survey Association — World Values Survey, Wave 7.
 
 Please refer to the WVS documentation and data-use terms when using or redistributing the source data.
+
+### Country chart readability update
+The country comparison chart uses a larger left margin and increased height so all 66 country/region labels are visible without relying on hover. A complete values table is also available below the chart.
+
+
+### Workflow visualization update
+The research workflow is rendered with responsive HTML/CSS cards rather than a static image. The step text is selectable and the layout adapts to smaller screens.

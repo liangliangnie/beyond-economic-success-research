@@ -110,6 +110,26 @@ def country_label(code):
         pass
     return code
 
+
+def workflow_step(num, title, bullets):
+    bullet_html = "".join(f"<li>{html.escape(item)}</li>" for item in bullets)
+    return ("<div class='workflow-step'><div class='workflow-step-head'>"
+            f"<span class='workflow-step-num'>{html.escape(str(num))}</span>"
+            f"<div class='workflow-step-title'>{html.escape(title)}</div></div>"
+            f"<ul>{bullet_html}</ul></div>")
+
+
+def workflow_layer(layer_num, layer_title, steps, layer_class):
+    label = (f"<div class='workflow-layer-label'><small>Layer {layer_num}</small>"
+             f"{html.escape(layer_title)}</div>")
+    pieces = []
+    for i, step in enumerate(steps):
+        pieces.append(workflow_step(*step))
+        if i < len(steps) - 1:
+            pieces.append("<div class='workflow-arrow' aria-hidden='true'>→</div>")
+    return (f"<section class='workflow-layer {layer_class}'><div>{label}</div>"
+            f"<div class='workflow-layer-content'>{''.join(pieces)}</div></section>")
+
 st.markdown(
     """
     <style>
@@ -215,7 +235,39 @@ st.markdown(
     @media(max-width:800px) { .st-key-home_header { padding:1.5rem 1.2rem; border-radius:24px; }
       .topline { align-items:flex-start; flex-direction:column; gap:.35rem; }
       .hero-deck {font-size:.96rem;} .block-container {padding-top:.65rem;} }
-    </style>
+    
+    .workflow-diagram { margin:1rem 0 1.5rem; color:#4A3023; }
+    .workflow-layer { display:grid; grid-template-columns:150px minmax(0,1fr); gap:12px; margin:12px 0; padding:10px; border:1px solid #E8DCD0; border-radius:20px; background:#FFFEFC; box-shadow:0 2px 0 rgba(66,38,20,.025); }
+    .workflow-layer-label { display:flex; flex-direction:column; justify-content:center; border-radius:14px; padding:14px 13px; font-weight:800; line-height:1.25; font-size:.88rem; }
+    .workflow-layer-label small { display:block; font-size:.68rem; font-weight:700; opacity:.8; margin-bottom:7px; letter-spacing:.06em; text-transform:uppercase; }
+    .workflow-layer-content { min-width:0; display:flex; align-items:stretch; gap:8px; }
+    .workflow-step { flex:1 1 0; min-width:0; position:relative; border:1px solid #D9B89F; border-radius:14px; padding:13px 14px 12px; background:linear-gradient(180deg,#FFFEFC,#FFF9F4); }
+    .workflow-step-head { display:flex; align-items:flex-start; gap:9px; margin-bottom:8px; }
+    .workflow-step-num { flex:0 0 23px; width:23px; height:23px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:#8C3F16; color:#fff!important; font-size:.75rem; font-weight:800; }
+    .workflow-step-title { font-size:.82rem; line-height:1.25; font-weight:800; color:#56321F; }
+    .workflow-step ul { margin:0; padding-left:17px; }
+    .workflow-step li { font-size:.69rem; line-height:1.45; color:#6E584B; margin:3px 0; }
+    .workflow-arrow { flex:0 0 16px; display:flex; align-items:center; justify-content:center; color:#B6531C; font-size:1.35rem; font-weight:800; }
+    .workflow-layer-1 .workflow-layer-label { background:#FBE4D0; color:#824018; }
+    .workflow-layer-2 .workflow-layer-label { background:#E4F0DE; color:#42643C; }
+    .workflow-layer-3 .workflow-layer-label { background:#F8E6C9; color:#81521B; }
+    .workflow-layer-4 .workflow-layer-label { background:#F4E1D6; color:#7C4329; }
+    .workflow-layer-5 .workflow-layer-label { background:#F3DED2; color:#7C4329; }
+    .workflow-layer-3 .workflow-step, .workflow-layer-4 .workflow-step, .workflow-layer-5 .workflow-step { background:#FFFEFC; }
+    .workflow-layer-4 .workflow-layer-content, .workflow-layer-5 .workflow-layer-content { gap:8px; }
+    .workflow-layer-4 .workflow-step, .workflow-layer-5 .workflow-step { padding:15px 18px; }
+    .workflow-layer-4 .workflow-step ul, .workflow-layer-5 .workflow-step ul { columns:2; column-gap:28px; }
+    .workflow-layer-4 .workflow-step li, .workflow-layer-5 .workflow-step li { break-inside:avoid; font-size:.76rem; }
+    .workflow-layer-4 .workflow-step-title, .workflow-layer-5 .workflow-step-title { font-size:.9rem; }
+    @media(max-width:850px) {
+      .workflow-layer { grid-template-columns:1fr; gap:8px; padding:8px; }
+      .workflow-layer-label { padding:11px 14px; }
+      .workflow-layer-content { flex-direction:column; }
+      .workflow-arrow { flex-basis:14px; height:14px; transform:rotate(90deg); }
+      .workflow-step { padding:13px 14px; }
+      .workflow-layer-4 .workflow-step ul, .workflow-layer-5 .workflow-step ul { columns:1; }
+    }
+</style>
     """,
     unsafe_allow_html=True,
 )
@@ -720,8 +772,30 @@ elif page == "Extra Insights":
 
 elif page == "Workflow":
     section_head("Research workflow", "10 steps · 5 layers")
-    show_zoomable_image(ASSET_DIR / "research_workflow_warm_sun.png", "Research workflow")
-    st.caption("The project workflow, from survey preparation to model evaluation and reflection.")
+    workflow_html = "<div class='workflow-diagram' role='figure' aria-label='Research workflow with ten steps organized into five layers'>"
+    workflow_html += workflow_layer(1, "Data Understanding & Measurement", [
+        (1, "Data Collection & Overview", ["WVS Wave 7 dataset", "Scope, sample and key variables"]),
+        (2, "Variable Inventory & Questionnaire Review", ["Variable list and mapping", "Grouping by questionnaire themes (e.g. economic, social, personal)"]),
+        (3, "Data Quality & Special Codes", ["Identify and handle special missing codes", "Check data types and distributions", "Prepare cleaned dataset"]),
+    ], "workflow-layer-1")
+    workflow_html += workflow_layer(2, "Descriptive & Exploratory Analysis", [
+        (4, "Exploratory Data Analysis (EDA)", ["Distributions and key patterns", "Country-level overview", "Comparison across groups"]),
+        (5, "Correlation Analysis", ["Pooled, within-country, and between-country correlations", "Feature correlation and redundancy", "Relationships with life satisfaction"]),
+        (6, "Questionnaire-Level Analysis", ["Analyze predictors by questionnaire categories (e.g. economic, social, political, personal)", "Compare their associations with life satisfaction", "Inform feature selection and modeling"]),
+    ], "workflow-layer-2")
+    workflow_html += workflow_layer(3, "Modeling & Feature Selection", [
+        (7, "Feature Engineering & Selection", ["Construct and prepare predictors", "Compare feature sets (e.g. Top 20 vs 30)", "Handle missing data (simple vs hierarchical)"]),
+        (8, "Model Experiments & Comparison", ["Train and compare models: Linear Regression, Decision Tree, Random Forest", "5-fold cross-validation", "Select the best model and configuration"]),
+    ], "workflow-layer-3")
+    workflow_html += workflow_layer(4, "Model Evaluation & Interpretation", [
+        (9, "Final Model & Interpretation", ["Final model: Random Forest Regressor", "Evaluate performance (CV and test set: R², MAE, RMSE)", "Interpret results: Feature Importance, SHAP", "Explore Q50 (financial satisfaction) and Q288 (perceived income position)"]),
+    ], "workflow-layer-4")
+    workflow_html += workflow_layer(5, "Conclusion & Reflection", [
+        (10, "Conclusions, Limitations & Future Work", ["Main findings and answer to the research question", "Limitations (e.g. cross-sectional, non-causality, country differences)", "Future analysis (e.g. country-based validation, interactions, additional variables)"]),
+    ], "workflow-layer-5")
+    workflow_html += "</div>"
+    st.markdown(workflow_html, unsafe_allow_html=True)
+    st.caption("The workflow is now rendered as responsive HTML cards, so the text remains selectable and adapts to screen size.")
 
     section_head("Notebook sequence", "The research notebooks")
     notebooks = [
