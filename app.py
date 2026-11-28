@@ -267,6 +267,72 @@ st.markdown(
       .workflow-step { padding:13px 14px; }
       .workflow-layer-4 .workflow-step ul, .workflow-layer-5 .workflow-step ul { columns:1; }
     }
+    /* Mobile-first refinements: comfortable reading, tapping and chart viewing */
+    @media(max-width:640px) {
+      .block-container { padding: .55rem .72rem 2.5rem !important; }
+      h1 { font-size:clamp(2.05rem,9vw,2.75rem)!important; line-height:1.06!important; }
+      h2 { font-size:1.52rem!important; line-height:1.16!important; }
+      h3 { font-size:1.08rem!important; }
+      .st-key-home_header, .st-key-prediction_header, .st-key-insights_header,
+      .st-key-extra_insights_header, .st-key-workflow_header {
+        padding:1rem .9rem !important; border-radius:19px !important; margin-bottom:1rem !important;
+      }
+      .topline { margin-bottom:.8rem; }
+      .brand { font-size:.72rem; }
+      .eyebrow { font-size:.62rem; padding:.42rem .7rem; margin-bottom:.8rem; }
+      .hero-deck { font-size:.9rem !important; line-height:1.65 !important; }
+      .section-head { margin:1.65rem 0 .75rem; }
+      .section-label { font-size:.63rem; }
+      .metric-card { padding:1rem; border-radius:17px; }
+      .metric-value { font-size:1.55rem; }
+      .content-card, .reflection-card { padding:1rem; border-radius:18px; }
+      .soft-note, .warm-note { padding:.85rem .9rem; border-radius:15px; font-size:.88rem; }
+      .reflection-title { font-size:1rem; }
+      .reflection-question { font-size:.84rem; }
+      /* Keep page navigation readable and thumb-friendly instead of tiny pills. */
+      .st-key-home_header div[role="radiogroup"],
+      .st-key-prediction_header div[role="radiogroup"],
+      .st-key-insights_header div[role="radiogroup"],
+      .st-key-extra_insights_header div[role="radiogroup"],
+      .st-key-workflow_header div[role="radiogroup"] {
+        display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:.35rem !important; width:100%;
+      }
+      .st-key-home_header div[role="radiogroup"] label,
+      .st-key-prediction_header div[role="radiogroup"] label,
+      .st-key-insights_header div[role="radiogroup"] label,
+      .st-key-extra_insights_header div[role="radiogroup"] label,
+      .st-key-workflow_header div[role="radiogroup"] label {
+        min-width:0 !important; width:100% !important; margin:0 !important;
+        border-radius:12px !important; padding:.55rem .25rem !important;
+        justify-content:center; text-align:center; font-size:.72rem !important;
+      }
+      .st-key-home_header div[role="radiogroup"] label p,
+      .st-key-prediction_header div[role="radiogroup"] label p,
+      .st-key-insights_header div[role="radiogroup"] label p,
+      .st-key-extra_insights_header div[role="radiogroup"] label p,
+      .st-key-workflow_header div[role="radiogroup"] label p { font-size:.72rem !important; }
+      /* Stack text/chart columns and survey fields on narrow screens. */
+      [data-testid="stHorizontalBlock"] { flex-wrap:wrap !important; gap:.65rem !important; }
+      [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        flex:1 1 100% !important; width:100% !important; min-width:100% !important;
+      }
+      [data-testid="stMetric"] { padding:.8rem; border-radius:15px; }
+      [data-testid="stMetricValue"] { font-size:1.45rem !important; }
+      div.stButton > button { min-height:44px; width:100%; padding:.65rem .8rem; }
+      div[role="radiogroup"] label { padding:.55rem .7rem; }
+      .fi-card { padding:12px 10px !important; }
+      .fi-label { overflow-wrap:anywhere; }
+      .fi-axis { font-size:9px !important; }
+      .workflow-layer-label { font-size:.82rem; }
+      .workflow-step-title { font-size:.85rem; }
+      .workflow-step li { font-size:.76rem; line-height:1.5; }
+      .footer { margin-top:2rem; font-size:.62rem; line-height:1.6; }
+    }
+    @media(min-width:641px) and (max-width:900px) {
+      .block-container { padding-left:1.2rem; padding-right:1.2rem; }
+      .metric-card { padding:1rem; }
+    }
 </style>
     """,
     unsafe_allow_html=True,
