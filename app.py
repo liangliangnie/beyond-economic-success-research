@@ -79,11 +79,11 @@ def load_chart_data(filename):
     return pd.read_csv(ASSET_DIR / filename)
 
 
-def plotly_warm(fig, height=430):
+def plotly_warm(fig, height=430, margin=None):
     fig.update_layout(
         height=height, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#FFFEFC",
         font=dict(family="DM Sans, sans-serif", color="#2D211D"),
-        margin=dict(l=18, r=18, t=35, b=25),
+        margin=margin or dict(l=18, r=18, t=35, b=25),
         colorway=["#D95B18", "#7D927B", "#D9A06A", "#8C7568", "#C98263"],
         xaxis=dict(gridcolor="#F0E7DE", zerolinecolor="#D8C9BC"),
         yaxis=dict(gridcolor="#F0E7DE", zerolinecolor="#D8C9BC"),
@@ -92,8 +92,8 @@ def plotly_warm(fig, height=430):
     return fig
 
 
-def show_plotly(fig, height=430):
-    fig = plotly_warm(fig, height)
+def show_plotly(fig, height=430, margin=None):
+    fig = plotly_warm(fig, height, margin=margin)
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True, "responsive": True})
 
 
@@ -586,10 +586,32 @@ elif page == "Model Insights":
     section_head("Country & social context", "Life satisfaction across 66 countries and regions",
                 "Country appeared as an important predictor in the original research model, but it is intentionally excluded from the interactive survey. This chart shows weighted differences in average self-reported life satisfaction across WVS Wave 7 country/region entries.")
     country_df = load_chart_data("country_summary_data.csv").sort_values("mean_q49", ascending=True)
-    country_fig = px.bar(country_df, x="mean_q49", y="country", orientation="h", hover_data={"code": True, "n": True, "mean_q49": ":.2f"}, labels={"mean_q49":"Weighted mean life satisfaction (Q49)","country":"Country / region"})
-    country_fig.add_vline(x=7.06, line_dash="dash", line_color="#8C7568", annotation_text="Overall mean 7.06")
-    show_plotly(country_fig, height=920)
-    st.caption("Weighted country/region averages; hover over bars for the country code and response count.")
+    country_df = country_df.sort_values("mean_q49", ascending=True).copy()
+    country_fig = px.bar(
+        country_df, x="mean_q49", y="country", orientation="h",
+        hover_data={"code": True, "n": True, "mean_q49": ":.2f"},
+        labels={"mean_q49":"Weighted mean life satisfaction (Q49)","country":"Country / region"},
+        text=None,
+    )
+    country_fig.update_yaxes(
+        automargin=True, ticklabelposition="outside", tickfont=dict(size=11),
+        title_text="Country / region",
+    )
+    country_fig.update_xaxes(range=[0, 9], tickformat=".1f")
+    country_fig.add_vline(
+        x=7.06, line_dash="dash", line_color="#8C7568",
+        annotation_text="Overall mean 7.06", annotation_position="top",
+    )
+    # Extra left margin prevents country names from being clipped; a taller chart
+    # gives each of the 66 country/region labels enough vertical space.
+    show_plotly(country_fig, height=1450, margin=dict(l=225, r=155, t=65, b=45))
+    st.caption("All 66 country/region names are shown directly on the chart. Hover for the country code and response count.")
+    country_table = country_df.sort_values("mean_q49", ascending=False)[["country", "code", "mean_q49", "n"]].rename(
+        columns={"country":"Country / region", "code":"Code", "mean_q49":"Weighted mean Q49", "n":"Responses"}
+    )
+    country_table["Weighted mean Q49"] = country_table["Weighted mean Q49"].round(2)
+    with st.expander("View all country/region values in a table"):
+        st.dataframe(country_table, hide_index=True, use_container_width=True)
     st.markdown(
         "<div class='content-card'><p style='color:#786B63;line-height:1.7'>Country-level differences may reflect many contextual and measurement factors. This chart is descriptive and does not identify which national conditions explain the differences.</p>"
         "<p><strong>Questions to consider</strong></p><ul><li>Why do average life satisfaction levels differ across countries—and how much might these differences reflect social conditions, cultural contexts, or response patterns?</li>"
